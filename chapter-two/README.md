@@ -76,3 +76,30 @@ We will probably have various transformations that need to be executed in a spec
 Scikit-learn provides a Pipeline class where we can configure a pipeline of transformers.
 
 The pipeline constructor takes a list of name / estimator pairs defining a sequence of steps. It will call the `fit_transform` methods on all the transformers.
+
+### Fine tuning a model
+
+#### Grid Search
+
+Grid search can automatically run experiments to find the optimal hyperparameters for your model.
+
+#### Randomised search
+
+The grid search approach is good for when we are exploring relatively few combinations, but when the hyperparameter space is large it is often better to used a randomised search instead.
+
+Instead of trying out all possible combinations it evaluates a given number of random combinations.
+
+This has two main benefits:
+- If you let the randomised search for 1000 iterations it will explore 1000 different values for each hyperparameter
+- You have more control over the computing budget you want to allocate to hyperparameter search by simply setting the number of iterations
+
+### Going live
+
+Before a model is launched into a production environment it makes sense to do some things before hand.
+
+- Write code to monitor the systems performance and trigger an alert when it drops
+    - Performance degradation
+    - Sudden breakage
+- A process for human's to analyse the systems performance
+- Evaluate the systems input data quality to catch any performance degradation early
+- Automatically train models regularly using fresh data

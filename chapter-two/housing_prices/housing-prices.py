@@ -1,13 +1,18 @@
+from json import encoder
+
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from pandas.plotting._matplotlib import scatter_matrix
+from sklearn.ensemble import RandomForestRegressor
 from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error
-from sklearn.model_selection import StratifiedShuffleSplit
+from sklearn.model_selection import StratifiedShuffleSplit, cross_val_score, GridSearchCV
 from sklearn.pipeline import Pipeline, FeatureUnion
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.tree import DecisionTreeRegressor
+
 from housing_prices.combined_attributes_adder import CombinedAttributesAdder
 
 
@@ -113,4 +118,90 @@ housing_predictions = lin_reg.predict(housing_prepared)
 lin_mse = mean_squared_error(housing_labels, housing_predictions)
 lin_rmse = np.sqrt(lin_mse)
 
-print(lin_rmse)
+print("Linear regression root mean square error: {}".format(lin_rmse))
+
+tree_reg = DecisionTreeRegressor()
+tree_reg.fit(housing_prepared, housing_labels)
+
+housing_predictions = tree_reg.predict(housing_prepared)
+tree_mse = mean_squared_error(housing_labels, housing_predictions)
+tree_rmse = np.sqrt(tree_mse)
+
+print("Decision tree root mean square error: {}".format(tree_rmse))
+
+# Decision tree using 10 fold cross validation
+scores = cross_val_score(tree_reg, housing_prepared, housing_labels, scoring="neg_mean_squared_error", cv=10)
+tree_rmse_scores = np.sqrt(-scores)
+
+print("Scores: {}".format(tree_rmse_scores))
+print("Mean: {}".format(tree_rmse_scores.mean()))
+print("Standard deviation: {}".format(tree_rmse_scores.std()))
+
+# Linear regression using 10 fold cross validation
+lin_scores = cross_val_score(lin_reg, housing_prepared, housing_labels, scoring="neg_mean_squared_error", cv=10)
+lin_rmse_scores = np.sqrt(-lin_scores)
+
+print("Scores: {}".format(lin_rmse_scores))
+print("Mean: {}".format(lin_rmse_scores.mean()))
+print("Standard deviation: {}".format(lin_rmse_scores.std()))
+
+# Random forest using 10 fold cross validation
+forest_reg = RandomForestRegressor()
+forest_reg.fit(housing_prepared, housing_labels)
+forest_scores = cross_val_score(forest_reg, housing_prepared, housing_labels, scoring="neg_mean_squared_error", cv=10)
+forest_rmse_scores = np.sqrt(-forest_scores)
+
+print("Scores: {}".format(forest_rmse_scores))
+print("Mean: {}".format(forest_rmse_scores.mean()))
+print("Standard deviation: {}".format(forest_rmse_scores.std()))
+
+# Use Grid Search to find optimal hyperparameters
+param_grid = [
+    {
+        "n_estimators": [3, 10, 30],
+        "max_features": [2, 4, 6, 8]
+    },
+    {
+        "bootstrap": [False],
+        "n_estimators": [3, 10],
+        "max_features": [2, 3, 4]
+    }
+]
+
+grid_search = GridSearchCV(forest_reg, param_grid, cv=5, scoring="neg_mean_squared_error")
+grid_search.fit(housing_prepared, housing_labels)
+
+print("Grid search best params: {}".format(grid_search.best_params_))
+print("Grid search best estimator: {}".format(grid_search.best_estimator_))
+print("Grid search best score: {}".format(grid_search.best_score_))
+print("Grid search best index: {}".format(grid_search.best_index_))
+
+cvres = grid_search.cv_results_
+for mean_score, params in zip(cvres["mean_test_score"], cvres["params"]):
+    print(np.sqrt(-mean_score), params)
+
+# Analyse the best models and their errors
+feature_importances = grid_search.best_estimator_.feature_importances_
+print("Feature importances: {}".format(feature_importances))
+
+# Display the importance scores next to each attribute name
+extra_attribs = ["rooms_per_hhold", "pop_per_hhold", "bedrooms_per_room"]
+# cat_one_hot_attribs = list(encoder.classes_)
+attributes = num_attribs + extra_attribs
+atts = sorted(zip(feature_importances, attributes), reverse=True)
+
+print("Feature importances with attribute names: {}".format(atts))
+
+# Run the test set against the chosen model
+final_model = grid_search.best_estimator_
+
+X_test = strat_test_set.drop("median_house_value", axis=1)
+Y_test = strat_test_set["median_house_value"].copy()
+X_test_prepared = full_pipeline.transform(X_test)
+
+final_predictions = final_model.predict(X_test_prepared)
+
+final_mse = mean_squared_error(Y_test, final_predictions)
+final_rmse = np.sqrt(final_mse)
+
+print("Final prediction: {}".format(final_rmse))
