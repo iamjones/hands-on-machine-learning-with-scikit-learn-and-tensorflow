@@ -4,11 +4,12 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from pandas.plotting._matplotlib import scatter_matrix
+from scipy.stats import randint
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error
-from sklearn.model_selection import StratifiedShuffleSplit, cross_val_score, GridSearchCV
+from sklearn.model_selection import StratifiedShuffleSplit, cross_val_score, GridSearchCV, RandomizedSearchCV
 from sklearn.pipeline import Pipeline, FeatureUnion
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.tree import DecisionTreeRegressor
@@ -168,7 +169,13 @@ param_grid = [
     }
 ]
 
-grid_search = GridSearchCV(forest_reg, param_grid, cv=5, scoring="neg_mean_squared_error")
+param_dist = {"max_depth": [3, None],
+              "max_features": randint(1, 11),
+              "min_samples_split": randint(2, 11),
+              "bootstrap": [True, False]}
+
+grid_search = RandomizedSearchCV(forest_reg, param_distributions=param_dist, n_iter=20, cv=10, iid=False)
+# grid_search = GridSearchCV(forest_reg, param_grid, cv=5, scoring="neg_mean_squared_error")
 grid_search.fit(housing_prepared, housing_labels)
 
 print("Grid search best params: {}".format(grid_search.best_params_))
